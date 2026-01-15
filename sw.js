@@ -1,14 +1,15 @@
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open('legal-track-store').then((cache) => cache.addAll([
-      '.',
-      'index.html'
-    ]))
-  );
-});
-
-self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((response) => response || fetch(e.request))
-  );
-});
+{
+  "name": "LegalTrack Pro",
+  "short_name": "LegalTrack",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2666/2666505.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
