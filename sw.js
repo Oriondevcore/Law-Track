@@ -1,10 +1,14 @@
-const CACHE_NAME = 'orion-v1';
-const ASSETS = ['./index.html', './manifest.json'];
-
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
+  e.waitUntil(
+    caches.open('legal-track-store').then((cache) => cache.addAll([
+      '.',
+      'index.html'
+    ]))
+  );
 });
 
 self.addEventListener('fetch', (e) => {
-  e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+  e.respondWith(
+    caches.match(e.request).then((response) => response || fetch(e.request))
+  );
 });
