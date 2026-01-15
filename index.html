@@ -1,368 +1,67 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <base target="_top">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
-  <style>
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #f1f5f9; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-    
-    .fade-in { animation: fadeIn 0.3s ease-in; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    
-    .nav-item { @apply flex items-center p-3 mb-2 rounded-lg cursor-pointer transition text-slate-400 hover:text-white hover:bg-slate-800; }
-    .nav-item.active { @apply bg-indigo-600 text-white shadow-lg; }
-    
-    .mic-pulse { animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } 100% { box-shadow: 0 0 0 20px rgba(0,0,0,0); } }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LegalTrack Pro</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #0f172a; }
+        iframe { width: 100%; height: 100%; border: none; }
+    </style>
 </head>
-<body class="bg-slate-100 h-screen w-screen overflow-hidden flex font-sans text-slate-800">
-
-  <!-- NOTIFICATIONS -->
-  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
-
-  <!-- LOGIN OVERLAY -->
-  <div id="login-overlay" class="fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center fade-in">
-    <div class="bg-white p-8 rounded-xl shadow-2xl text-center w-96">
-      <i class="ph-fill ph-scales text-5xl text-indigo-600 mb-4"></i>
-      <h1 class="text-2xl font-bold mb-2">LegalTrack Pro</h1>
-      <p class="text-slate-500 mb-6 text-sm">Enterprise Edition v4.0</p>
-      
-      <div id="login-loader" class="hidden text-indigo-600 font-bold mb-4">Verifying Credentials...</div>
-      
-      <button onclick="doGoogleLogin()" class="w-full bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold py-3 px-4 rounded flex items-center justify-center gap-3 transition">
-        <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-6 h-6">
-        Sign in with Google
-      </button>
-      
-      <div id="login-error" class="text-red-500 text-sm mt-4 hidden"></div>
-    </div>
-  </div>
-
-  <!-- LICENSE MODAL -->
-  <div id="license-modal" class="hidden fixed inset-0 bg-black/80 z-[60] flex items-center justify-center">
-    <div class="bg-white p-8 rounded-xl w-96 text-center">
-      <i class="ph-fill ph-lock-key text-red-500 text-4xl mb-4"></i>
-      <h2 class="text-xl font-bold text-red-600">License Expired</h2>
-      <p class="text-slate-500 text-sm mb-4">Your subscription has ended.</p>
-      <input type="text" id="license-code" placeholder="Enter Activation Code" class="w-full border p-2 rounded mb-4 text-center uppercase tracking-widest">
-      <button onclick="activateLicense()" class="bg-indigo-600 text-white px-6 py-2 rounded font-bold">Activate</button>
-    </div>
-  </div>
-
-  <!-- T&C MODAL -->
-  <div id="tc-modal" class="hidden fixed inset-0 bg-black/50 z-[45] flex items-center justify-center">
-    <div class="bg-white p-6 rounded-lg w-96 shadow-xl">
-      <h3 class="font-bold text-lg mb-2">AI Disclaimer</h3>
-      <p class="text-sm text-slate-600 mb-4">The AI Assistant provides information, not legal advice. Verify all outputs.</p>
-      <button onclick="acceptTC()" class="w-full bg-indigo-600 text-white py-2 rounded">I Agree</button>
-    </div>
-  </div>
-
-  <!-- 1. LEFT SIDEBAR (Navigation) -->
-  <aside class="w-20 lg:w-64 bg-slate-900 text-white flex flex-col justify-between shrink-0">
-    <div class="p-4">
-      <div class="flex items-center gap-3 mb-8 px-2">
-        <i class="ph-fill ph-scales text-2xl text-indigo-500"></i>
-        <span class="font-bold text-lg hidden lg:block">LegalTrack</span>
-      </div>
-      
-      <nav class="space-y-2">
-        <div onclick="nav('dashboard')" id="nav-dashboard" class="nav-item active">
-          <i class="ph-bold ph-squares-four text-xl"></i><span class="ml-3 hidden lg:block">Dashboard</span>
-        </div>
-        <div onclick="nav('matters')" id="nav-matters" class="nav-item">
-          <i class="ph-bold ph-files text-xl"></i><span class="ml-3 hidden lg:block">Matters</span>
-        </div>
-        <div onclick="nav('drive')" id="nav-drive" class="nav-item">
-          <i class="ph-bold ph-car text-xl"></i><span class="ml-3 hidden lg:block">Drive Mode</span>
-        </div>
-        <div onclick="nav('settings')" id="nav-settings" class="nav-item">
-          <i class="ph-bold ph-gear text-xl"></i><span class="ml-3 hidden lg:block">Settings</span>
-        </div>
-      </nav>
-    </div>
-    
-    <div class="p-4 border-t border-slate-800">
-      <div class="flex items-center gap-3 text-slate-400 text-sm">
-        <div class="w-2 h-2 rounded-full bg-green-500"></div>
-        <span id="user-display" class="hidden lg:block">User</span>
-      </div>
-    </div>
-  </aside>
-
-  <!-- 2. MAIN CONTENT (Center) -->
-  <main class="flex-1 overflow-y-auto bg-slate-100 relative">
-    <header class="h-16 bg-white border-b flex items-center justify-between px-6 sticky top-0 z-10">
-      <h2 id="page-title" class="font-bold text-xl text-slate-700">Dashboard</h2>
-      <button onclick="refreshData()" class="p-2 hover:bg-slate-100 rounded-full text-slate-500"><i class="ph-bold ph-arrows-clockwise"></i></button>
-    </header>
-
-    <div class="p-6">
-      
-      <!-- DASHBOARD VIEW -->
-      <div id="view-dashboard" class="space-y-6 fade-in">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <div class="text-slate-500 text-xs font-bold uppercase tracking-wide">Total Matters</div>
-            <div id="stat-total" class="text-4xl font-bold mt-2 text-slate-800">--</div>
-          </div>
-          <div class="bg-white p-6 rounded-xl shadow-sm border border-red-100 bg-red-50">
-            <div class="text-red-600 text-xs font-bold uppercase tracking-wide">Critical (< 30 Days)</div>
-            <div id="stat-critical" class="text-4xl font-bold mt-2 text-red-600">--</div>
-          </div>
-          <div class="bg-white p-6 rounded-xl shadow-sm border border-orange-100 bg-orange-50">
-            <div class="text-orange-600 text-xs font-bold uppercase tracking-wide">Warning (< 90 Days)</div>
-            <div id="stat-upcoming" class="text-4xl font-bold mt-2 text-orange-600">--</div>
-          </div>
-        </div>
-        
-        <!-- Activity Stream -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h3 class="font-bold text-slate-700 mb-4">Recent Activity</h3>
-          <div id="activity-stream" class="space-y-3">Loading...</div>
-        </div>
-      </div>
-
-      <!-- MATTERS VIEW -->
-      <div id="view-matters" class="hidden fade-in">
-        <div class="flex justify-between mb-4">
-          <input type="text" id="search-input" onkeyup="renderMatters()" placeholder="Search cases..." class="bg-white border p-2 rounded w-64">
-          <button onclick="openModal()" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold text-sm">New Matter</button>
-        </div>
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-          <table class="w-full text-left text-sm">
-            <thead class="bg-slate-50 border-b">
-              <tr>
-                <th class="p-3">Matter Name</th>
-                <th class="p-3">Status</th>
-                <th class="p-3">Days Left</th>
-                <th class="p-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="matters-list"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- DRIVE MODE -->
-      <div id="view-drive" class="hidden fade-in h-[80vh] flex flex-col items-center justify-center">
-        <div class="bg-white p-8 rounded-full shadow-2xl mb-8 cursor-pointer hover:scale-105 transition" onclick="toggleMic()" id="mic-btn">
-          <i class="ph-fill ph-microphone text-6xl text-red-500"></i>
-        </div>
-        <div id="drive-status" class="text-2xl font-bold text-slate-400">Tap to Dictate</div>
-      </div>
-      
-       <!-- SETTINGS VIEW -->
-      <div id="view-settings" class="hidden fade-in">
-        <div class="bg-white p-6 rounded-xl shadow-sm max-w-lg">
-           <h3 class="font-bold mb-4">App License</h3>
-           <div class="flex justify-between items-center bg-slate-50 p-3 rounded mb-4">
-             <span>Days Remaining:</span>
-             <span id="license-days" class="font-bold text-green-600">Checking...</span>
-           </div>
-           <button onclick="document.getElementById('license-modal').classList.remove('hidden')" class="text-indigo-600 text-sm font-bold">Enter Activation Code</button>
-        </div>
-      </div>
-
-    </div>
-  </main>
-
-  <!-- 3. AI CHAT (Right Sidebar - Main Feature) -->
-  <aside class="w-80 bg-white border-l border-slate-200 flex flex-col shrink-0 relative z-20">
-    <div class="h-16 border-b flex items-center px-4 bg-indigo-50">
-      <i class="ph-fill ph-sparkle text-indigo-600 mr-2"></i>
-      <span class="font-bold text-indigo-900">AI Associate</span>
-    </div>
-    
-    <div id="chat-history" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-      <div class="text-xs text-center text-slate-400 my-4">Conversation Started</div>
-    </div>
-    
-    <div id="context-indicator" class="px-4 py-2 bg-yellow-50 text-xs text-yellow-700 border-t border-yellow-100 hidden">
-      Context: <span id="context-name" class="font-bold">None</span>
-      <button onclick="clearContext()" class="ml-2 text-yellow-900 underline">Clear</button>
-    </div>
-
-    <div class="p-4 border-t bg-white">
-      <div class="flex gap-2">
-        <input type="text" id="chat-input" placeholder="Ask about deadlines..." class="flex-1 bg-slate-100 border-0 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" onkeypress="if(event.key==='Enter') sendChat()">
-        <button onclick="sendChat()" class="bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700 transition"><i class="ph-bold ph-paper-plane-right"></i></button>
-      </div>
-    </div>
-  </aside>
-
-  <!-- MODAL FOR EDITING (Simplified) -->
-  <div id="matter-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-    <div class="bg-white p-6 rounded-xl w-[600px]">
-       <h3 class="font-bold text-lg mb-4">Matter Details</h3>
-       <form id="matter-form" onsubmit="saveMatter(event)">
-         <input type="hidden" id="inp-id">
-         <div class="grid grid-cols-2 gap-4">
-           <input id="inp-name" class="border p-2 rounded" placeholder="Matter Name" required>
-           <select id="inp-status" class="border p-2 rounded"><option>Active</option><option>Served</option></select>
-           <input id="inp-email" class="border p-2 rounded" placeholder="Client Email">
-           <textarea id="inp-strategy" class="col-span-2 border p-2 rounded" placeholder="Strategy Brief"></textarea>
-         </div>
-         <div class="mt-4 flex justify-end gap-2">
-           <button type="button" onclick="closeModal()" class="px-4 py-2 text-slate-500">Cancel</button>
-           <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded">Save</button>
-         </div>
-       </form>
-    </div>
-  </div>
-
-  <script>
-    // --- STATE ---
-    let currentUser = null;
-    let allMatters = [];
-    let currentContext = null;
-
-    // --- INIT ---
-    function doGoogleLogin() {
-      document.getElementById('login-loader').classList.remove('hidden');
-      google.script.run.withSuccessHandler(res => {
-        if(res.success) {
-          currentUser = res;
-          document.getElementById('user-display').innerText = res.username;
-          document.getElementById('login-overlay').classList.add('hidden');
-          document.getElementById('license-days').innerText = res.license.daysLeft + " Days";
-          
-          if(!localStorage.getItem('ai_tc_accepted')) {
-             document.getElementById('tc-modal').classList.remove('hidden');
-          }
-          refreshData();
-        } else {
-          if(res.error === 'LICENSE_EXPIRED') {
-            document.getElementById('license-modal').classList.remove('hidden');
-          }
-          document.getElementById('login-error').innerText = res.message;
-          document.getElementById('login-error').classList.remove('hidden');
+<body>
+    <!-- REPLACE 'YOUR_GAS_DEPLOYMENT_URL' with your actual Web App URL -->
+    <iframe src="<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LegalTrack Pro</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #0f172a; }
+        iframe { width: 100%; height: 100%; border: none; }
+    </style>
+</head>
+<body>
+    <!-- REPLACE 'YOUR_GAS_DEPLOYMENT_URL' with your actual Web App URL -->
+    <iframe src="https://script.google.com/macros/s/AKfycbwPDskBXkkUIbD3sc4OQjOkB60Qa-rHRnJieyBGjw6PFuyVyfqLukj_2an307IgqGWy_g/exec" allow="microphone; camera; clipboard-write"></iframe>
+    <script>
+        // Check if browser supports Service Workers
+        if ('serviceWorker' in navigator) {
+            // We use window.load to ensure the page has loaded before registering
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(err => {
+                        // This catches the error you are seeing. 
+                        // Service Workers often fail in preview environments (blobs) or non-HTTPS.
+                        console.warn('ServiceWorker registration failed (Expected in Preview/Blob):', err);
+                    });
+            });
         }
-      }).authenticateUser();
-    }
-
-    // --- NAV ---
-    function nav(page) {
-      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-      document.getElementById('nav-' + page).classList.add('active');
-      
-      ['dashboard', 'matters', 'drive', 'settings'].forEach(v => document.getElementById('view-' + v).classList.add('hidden'));
-      document.getElementById('view-' + page).classList.remove('hidden');
-      document.getElementById('page-title').innerText = page.charAt(0).toUpperCase() + page.slice(1);
-    }
-
-    // --- CHAT ---
-    function acceptTC() {
-      localStorage.setItem('ai_tc_accepted', 'true');
-      document.getElementById('tc-modal').classList.add('hidden');
-    }
-
-    function sendChat() {
-      const inp = document.getElementById('chat-input');
-      const txt = inp.value;
-      if(!txt) return;
-      
-      addBubble(txt, 'user');
-      inp.value = '';
-      
-      google.script.run.withSuccessHandler(ans => {
-        addBubble(ans, 'ai');
-      }).askGeminiChat(txt, currentContext);
-    }
-
-    function addBubble(text, sender) {
-      const div = document.createElement('div');
-      div.className = sender === 'user' 
-        ? 'bg-indigo-600 text-white p-3 rounded-lg rounded-br-none text-sm self-end ml-8' 
-        : 'bg-white border border-slate-200 p-3 rounded-lg rounded-bl-none text-sm mr-8 text-slate-700 shadow-sm';
-      div.innerText = text;
-      const c = document.getElementById('chat-history');
-      c.appendChild(div);
-      c.scrollTop = c.scrollHeight;
-    }
-
-    function setContext(matter) {
-      currentContext = matter;
-      document.getElementById('context-indicator').classList.remove('hidden');
-      document.getElementById('context-name').innerText = matter.name;
-      addBubble(`I'm now focused on ${matter.name}. How can I help?`, 'ai');
-    }
-    
-    function clearContext() {
-      currentContext = null;
-      document.getElementById('context-indicator').classList.add('hidden');
-    }
-
-    // --- CORE LOGIC ---
-    function refreshData() {
-      google.script.run.withSuccessHandler(stats => {
-        document.getElementById('stat-total').innerText = stats.total;
-        document.getElementById('stat-critical').innerText = stats.critical;
-        document.getElementById('stat-upcoming').innerText = stats.upcoming;
-        document.getElementById('activity-stream').innerHTML = stats.recent.map(r => 
-          `<div class="text-sm border-b pb-2"><div class="font-bold text-slate-700">${r.action}</div><div class="text-xs text-slate-400">${r.time}</div></div>`
-        ).join('');
-      }).getDashboardStats();
-      
-      google.script.run.withSuccessHandler(list => {
-        allMatters = list;
-        renderMatters();
-      }).getMattersList();
-    }
-
-    function renderMatters() {
-      const q = document.getElementById('search-input').value.toLowerCase();
-      const tbody = document.getElementById('matters-list');
-      tbody.innerHTML = allMatters
-        .filter(m => m.name.toLowerCase().includes(q))
-        .map(m => `
-          <tr class="border-b hover:bg-slate-50 cursor-pointer" onclick="setContext({name:'${m.name}', status:'${m.status}', strategy:'${m.strategy}'})">
-            <td class="p-3 font-medium text-indigo-900">${m.name}</td>
-            <td class="p-3"><span class="px-2 py-1 bg-slate-200 rounded text-xs">${m.status}</span></td>
-            <td class="p-3 font-bold ${m.days < 30 ? 'text-red-600' : 'text-slate-600'}">${m.days}</td>
-            <td class="p-3 text-right">
-              <button onclick="draftEmail('${m.id}', event)" class="text-amber-500 hover:text-amber-700 mr-2" title="Draft Update"><i class="ph-bold ph-envelope-simple-open"></i></button>
-              <button onclick="editMatter('${m.id}', event)" class="text-blue-500 hover:text-blue-700"><i class="ph-bold ph-pencil-simple"></i></button>
-            </td>
-          </tr>`
-        ).join('');
-    }
-
-    function draftEmail(id, e) {
-      e.stopPropagation();
-      showToast("Drafting Email in Gmail...", "info");
-      google.script.run.withSuccessHandler(r => showToast(r.message, r.success?'success':'error')).draftClientEmail(id);
-    }
-    
-    function activateLicense() {
-      const code = document.getElementById('license-code').value;
-      google.script.run.withSuccessHandler(r => {
-        if(r.success) { 
-          document.getElementById('license-modal').classList.add('hidden'); 
-          alert("Activated!"); 
-          location.reload(); 
-        } else { alert(r.message); }
-      }).activateLicense(code);
-    }
-
-    function showToast(msg, type) {
-      const d = document.createElement('div');
-      d.className = `p-4 rounded shadow-lg text-white text-sm fade-in ${type==='error'?'bg-red-600':'bg-slate-800'}`;
-      d.innerText = msg;
-      document.getElementById('toast-container').appendChild(d);
-      setTimeout(()=>d.remove(), 3000);
-    }
-
-    // Modal helpers (Simplified for brevity)
-    function openModal() { document.getElementById('matter-modal').classList.remove('hidden'); }
-    function closeModal() { document.getElementById('matter-modal').classList.add('hidden'); }
-    function editMatter(id, e) { e.stopPropagation(); openModal(); /* Logic to populate form */ }
-    function saveMatter(e) { e.preventDefault(); /* Logic to save */ closeModal(); refreshData(); }
-  </script>
+    </script>
+</body>
+</html>" allow="microphone; camera; clipboard-write"></iframe>
+    <script>
+        // Check if browser supports Service Workers
+        if ('serviceWorker' in navigator) {
+            // We use window.load to ensure the page has loaded before registering
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(err => {
+                        // This catches the error you are seeing. 
+                        // Service Workers often fail in preview environments (blobs) or non-HTTPS.
+                        console.warn('ServiceWorker registration failed (Expected in Preview/Blob):', err);
+                    });
+            });
+        }
+    </script>
 </body>
 </html>
